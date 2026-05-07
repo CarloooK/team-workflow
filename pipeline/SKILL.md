@@ -9,7 +9,35 @@ author: Carlo
 
 > **源仓库**: https://github.com/CarloooK/team-workflow
 > **同步**: `cd ~/team-workflow && git pull && bash setup.sh`
-> **修改后记得同步回仓库**: `cp SKILL.md ~/team-workflow/pipeline/ && cd ~/team-workflow && git commit && git push`
+> **自动巡检**: cron 每 30 分钟检查一次 remote 更新 → 自动拉取 + 通知 Carlo
+> **修改后必须同步回仓库**（协议规则，全员遵守）
+>
+> ### 同步协议（全员必须遵守）
+>
+> **当你修改了 pipeline skill 或相关配置文件后：**
+>
+> 1. 先提交到本地 team-workflow 仓库
+>    ```bash
+>    cp ~/.hermes/skills/software-development/hermes-multi-agent-pipeline/SKILL.md ~/team-workflow/pipeline/
+>    cd ~/team-workflow && git add -A && git commit -m "update: <请简述修改内容>"
+>    ```
+>
+> 2. **不要直接 push** — Carlo 需要在合并前审批（Human-in-the-Loop）
+>
+> 3. 通知 Carlo:
+>    ```
+>    @Carlo 流程有更新，请审批推送：
+>    cd ~/projects/team-workflow && git push
+>    改动内容: <简单描述改了哪里>
+>    ```
+>
+> 4. Carlo 批准后，执行 `git push`。其他机器会在下个 30 分钟 cron 周期自动拉取。
+>
+> 5. 如果 Carlo 要求你先不推送（还需要修改），保持本地提交即可，cron 不会自动推送未提交的内容。
+>
+> **例外 — 紧急修复（CI 挂了、流程阻塞）：**
+> - 可直接 push 并在 Discord 说明：「紧急修复，已直接推送」
+> - 非紧急情况一律等 Carlo 审批
 
 A complete software development pipeline with **1 human + 4 Discord bots**
 collaborating via Discord channels and GitHub repositories.
@@ -214,6 +242,32 @@ grep -o '<@[0-9]*>' ~/.hermes/logs/gateway.log | sort -u
 - Mela: `<@1501072897383469258>`
 - CarloMac: `<@1501220920772263977>`
 
+### 11. 👤 Don't confuse Carlo with a bot — verify who you're addressing
+
+**Real failure (2026-05-07):** Xiaoxin read Carlo's question and replied
+addressing him as "@XPS" — confusing the human (Carlo) with a bot (XPS).
+This wastes a full round: Carlo must correct the mistake before the
+actual question gets answered.
+
+**Root cause:** A technical question from Carlo triggers the "XPS should
+answer this" reflex. The bot's response addresses XPS instead of Carlo.
+
+**Fix — always check before addressing:**
+1. **Who wrote the message?** Carlo (human) starts every conversation.
+   If Carlo wrote it, address Carlo. Do not reply to a bot unless that
+   bot specifically @mentioned you.
+2. **If Carlo asks a question** you'd normally delegate to XPS, still
+   address Carlo first: `Carlo，这个让 @XPS 来分析可行性`
+3. **Never say `@XPS 请...` when replying to Carlo** — even if the
+   answer calls for XPS's expertise. Frame it as addressing Carlo with
+   a delegation to XPS.
+4. **Self-check before sending:** Read your own reply. If the first
+   @mention after Carlo's question is another bot, you likely got it
+   wrong.
+
+**Test:** After Carlo says "我是Carlo,不是XPS", the bot immediately
+corrects: `抱歉 Carlo，@XPS 你看看这个。` Brief correction, no essay.
+
 ---
 
 ## SOUL.md Design Rules ⚠️
@@ -286,8 +340,27 @@ GITHUB_TOKEN=<shared-token>
 
 ### SOUL.md
 
-Copy from the templates in `templates/` to
-`~/.hermes/profiles/<bot-name>/SOUL.md`.
+The source of truth is `CarloooK/team-workflow` on GitHub.
+**Do NOT copy manually** — use the setup script:
+
+```bash
+# Clone once per machine
+git clone git@github.com:CarloooK/team-workflow.git ~/team-workflow
+
+# Sync skills and profiles to ~/.hermes/
+cd ~/team-workflow && bash setup.sh
+```
+
+This installs the pipeline skill, all profiles (SOUL.md templates), and
+references into `~/.hermes/skills/software-development/hermes-multi-agent-pipeline/`.
+
+After syncing, copy the relevant profile to the bot's profile directory:
+```bash
+cp ~/.hermes/skills/.../templates/soul-xiaoxin.md ~/.hermes/profiles/<bot-name>/SOUL.md
+```
+
+Adjust the Discord @name mentions in the SOUL.md to match the bot's
+actual Discord handle.
 
 ### Start
 
@@ -424,6 +497,7 @@ code-review-graph status
 | Git push fails with `Authentication failed` | **Two possible causes**: 401 (invalid PAT) or 403 (valid PAT, no org access). **ALWAYS test first**: `gh api repos/<org>/<repo>` — 401 = bad token, false = no push access | 401 → Carlo generates new PAT. 403 → add collaborator or org-scoped PAT. During stalemate see `references/credential-stalemate-protocol.md` |
 | Authentication succeeds but pushes to wrong user | Credential file `/home/chao/.git-credentials` may be 0 bytes after `patch` tool replaced content | Always verify after any credential write: `wc -c ~/.git-credentials`; if 0 → `echo "https://user:token@github.com" > ~/.git-credentials`; see `references/git-credential-debug.md` §2 |
 | SSH says "Hi User!" but git push still denied | SSH key added to personal account, not as repo Deploy Key with write access | Generate dedicated deploy key; test with `ssh -i <key> -o IdentitiesOnly=yes -T git@github.com` — if "Hi User!" it's personal, if "Permission denied" it's not yet added anywhere |
+| Bot addresses Carlo as another bot ("@XPS 请分析" when Carlo is speaking) | Reflexive delegation — sees technical question, replies to wrong person | Always check message author first. If Carlo wrote it, address Carlo. See Critical Pitfall #11 |
 | @mentions not working in Discord | Text `@Name` not real `<@ID>` | Patch discord.py per references |
 | Discussion never ends | No round limit in SOUL.md | Add "max 2 rounds, then close" |
 | Carlo slow to approve | Human delay | Xiaoxin: one reminder after 4h; during wait switch to productive standby — see `references/credential-stalemate-protocol.md` |
