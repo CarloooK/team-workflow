@@ -7,6 +7,10 @@ author: Carlo
 
 # Hermes Multi-Agent Pipeline
 
+> **源仓库**: https://github.com/CarloooK/team-workflow
+> **同步**: `cd ~/team-workflow && git pull && bash setup.sh`
+> **修改后记得同步回仓库**: `cp SKILL.md ~/team-workflow/pipeline/ && cd ~/team-workflow && git commit && git push`
+
 A complete software development pipeline with **1 human + 4 Discord bots**
 collaborating via Discord channels and GitHub repositories.
 
