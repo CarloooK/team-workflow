@@ -63,3 +63,20 @@ hermes cron list | grep team-workflow-sync
 ```bash
 hermes cron list
 ```
+
+---
+
+## 3. xiaoxin-healthcheck（每 2 小时）
+
+**用途：** 在 Xiaoxin WSL 上巡检关键服务状态，异常时告警。
+
+**检查项：**
+- `tmux:gateway` — Hermes Discord 网关
+- `hermes-webui` (port 8787)
+- `workspace` (port 3000)
+- 磁盘使用率 > 85%
+- GitHub SSH 连通性
+
+**依赖脚本：** `~/.hermes/scripts/xiaoxin-healthcheck.py`
+
+**静默规则：** 全部正常时不输出，只有异常时报。符合"Silent when stable"原则。
