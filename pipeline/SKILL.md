@@ -1,7 +1,7 @@
 ---
 name: hermes-multi-agent-pipeline
 description: "Full multi-agent software development pipeline with Hermes Discord bots. Architecture: 1 human (Carlo) + 4 bots (Xiaoxin/coordinator, XPS/systems-engineer, Mela/QA, CarloMac/implementer). Workflow: discuss → plan → human approval → execute → release. Communication via Discord channels, artifacts stored on GitHub."
-version: 2.2.0
+version: 2.3.0
 author: Carlo
 ---
 
@@ -242,7 +242,26 @@ grep -o '<@[0-9]*>' ~/.hermes/logs/gateway.log | sort -u
 - Mela: `<@1501072897383469258>`
 - CarloMac: `<@1501220920772263977>`
 
-### 11. 👤 Don't confuse Carlo with a bot — verify who you're addressing
+### 12. 🔒 Secrets must NEVER be hardcoded in code or committed to GitHub
+
+**Real instruction (2026-05-07):** Carlo explicitly stated: "后续所有涉密信息，不能硬编码，更不能上传到Github".
+
+**Applies to:**
+- API keys, tokens, passwords → always use `.env` or environment variables
+- Internal business data (fault DBs, customer info, internal config) → verify it's safe to push before committing
+- Credential files (`~/.git-credentials`, `~/.ssh/*`) → added to `.gitignore` already at the system level
+- SaaS SDK secrets (DingTalk ClientID/ClientSecret, Discord tokens, GitHub PATs)
+
+**Enforcement:**
+- All `.env` files are in `.gitignore` by default — do NOT override this
+- If a project needs configuration templates, use `.env.example` with placeholder values
+- Before `git add -A`, mentally scan: "does any file I'm adding contain a secret?"
+- When wiring up a new service, the first file to create is `.env` — then reference it from code with `os.environ.get("KEY")`
+- If a secret was accidentally committed, notify Carlo immediately — do not push
+
+**Exception:** Public demo/test keys created specifically for open-source examples (e.g., Stripe test mode keys, public API demo tokens).
+
+### 13. 👤 Don't confuse Carlo with a bot — verify who you're addressing
 
 **Real failure (2026-05-07):** Xiaoxin read Carlo's question and replied
 addressing him as "@XPS" — confusing the human (Carlo) with a bot (XPS).
@@ -497,7 +516,7 @@ code-review-graph status
 | Git push fails with `Authentication failed` | **Two possible causes**: 401 (invalid PAT) or 403 (valid PAT, no org access). **ALWAYS test first**: `gh api repos/<org>/<repo>` — 401 = bad token, false = no push access | 401 → Carlo generates new PAT. 403 → add collaborator or org-scoped PAT. During stalemate see `references/credential-stalemate-protocol.md` |
 | Authentication succeeds but pushes to wrong user | Credential file `/home/chao/.git-credentials` may be 0 bytes after `patch` tool replaced content | Always verify after any credential write: `wc -c ~/.git-credentials`; if 0 → `echo "https://user:token@github.com" > ~/.git-credentials`; see `references/git-credential-debug.md` §2 |
 | SSH says "Hi User!" but git push still denied | SSH key added to personal account, not as repo Deploy Key with write access | Generate dedicated deploy key; test with `ssh -i <key> -o IdentitiesOnly=yes -T git@github.com` — if "Hi User!" it's personal, if "Permission denied" it's not yet added anywhere |
-| Bot addresses Carlo as another bot ("@XPS 请分析" when Carlo is speaking) | Reflexive delegation — sees technical question, replies to wrong person | Always check message author first. If Carlo wrote it, address Carlo. See Critical Pitfall #11 |
+| Bot addresses Carlo as another bot ("@XPS 请分析" when Carlo is speaking) | Reflexive delegation — sees technical question, replies to wrong person | Always check message author first. If Carlo wrote it, address Carlo. See Critical Pitfall #13 |
 | @mentions not working in Discord | Text `@Name` not real `<@ID>` | Patch discord.py per references |
 | Discussion never ends | No round limit in SOUL.md | Add "max 2 rounds, then close" |
 | Carlo slow to approve | Human delay | Xiaoxin: one reminder after 4h; during wait switch to productive standby — see `references/credential-stalemate-protocol.md` |
