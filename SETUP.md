@@ -8,7 +8,7 @@
 | 机器 | 角色 | 状态 | 初始配置 |
 |------|------|------|---------|
 | Lenovo WSL | Xiaoxin（协调员） | ✅ 已完成 | [指引](#xiaoxinwsl) |
-| Dell PC | XPS（系统架构师） | ⬜ 待配置 | [指引](#xpsdell) |
+| Dell PC | XPS（系统架构师） | ✅ 已完成 | [指引](#xpsdell) |
 | MacMini | CarloMac（实现者） | ⬜ 待配置 | [指引](#carlomacmacmini) |
 | 云服务器 | Mela（QA） | ⬜ 待配置 | [指引](#mela云服务器) |
 
