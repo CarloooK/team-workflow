@@ -10,7 +10,7 @@
 | Lenovo WSL | Xiaoxin（协调员） | ✅ 已完成 | [指引](#xiaoxinwsl) |
 | Dell PC | XPS（系统架构师） | ✅ 已完成 | [指引](#xpsdell) |
 | MacMini | CarloMac（实现者） | ⬜ 待配置 | [指引](#carlomacmacmini) |
-| 云服务器 | Mela（QA） | ⬜ 待配置 | [指引](#mela云服务器) |
+| 云服务器 | Mela（QA） | ✅ 已完成 | [指引](#mela云服务器) |
 
 ---
 
@@ -94,31 +94,15 @@ ls ~/.hermes/skills/software-development/hermes-multi-agent-pipeline/
 
 ## Mela（云服务器）
 
-**状态**: ⬜ 待配置
+**状态**: ✅ 已完成
 
-目标机器：云服务器（Linux），SSH 或直接登录。
+已配置项：
+- `~/team-workflow` 已克隆
+- `setup.sh` 已运行，skill/模板/references 已同步到 `~/.hermes/`
+- `discord-mela` profile 已创建，SOUL.md 使用 `<@ID>` 格式
+- `mela-gateway-watchdog` cron（每 3 分钟）
+- `team-workflow-sync` cron（每 30 分钟）
 
-### 前置条件
-
-- [ ] Hermes Agent 已安装并运行
-- [ ] GitHub SSH key 已配置并有 repo 读取权限
-
-### 初始化命令
-
-```bash
-# 1. 克隆工作流仓库
-git clone git@github.com:CarloooK/team-workflow.git ~/team-workflow
-
-# 2. 同步到本地 Hermes
-cd ~/team-workflow && bash setup.sh
-
-# 3. 验证
-ls ~/.hermes/skills/software-development/hermes-multi-agent-pipeline/
-```
-
-### 验证
-
-在 Discord 发送 `@Mela 测试同步状态`，Mela 应回复确认已同步。
 
 ---
 

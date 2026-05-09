@@ -9,7 +9,7 @@ Bot team 的工作流定义仓库。所有机器（WSL, Dell PC, MacMini, 云服
 | Lenovo WSL | Xiaoxin（协调员） | ✅ 已配（含 cron 自动巡检） |
 | Dell PC | XPS（系统架构师） | ⬜ 待配置 — [SETUP.md](SETUP.md) |
 | MacMini | CarloMac（实现者） | ⬜ 待配置 — [SETUP.md](SETUP.md) |
-| 云服务器 | Mela（QA） | ⬜ 待配置 — [SETUP.md](SETUP.md) |
+| 云服务器 | Mela（QA） | ✅ 已配（含 cron 自动同步） |
 
 > 初始化指引详见 [SETUP.md](SETUP.md)
 
