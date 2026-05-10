@@ -1,7 +1,7 @@
 ---
 name: hermes-multi-agent-pipeline
 description: "Full multi-agent software development pipeline with Hermes Discord bots. Architecture: 1 human (Carlo) + 4 bots (Xiaoxin/coordinator, XPS/systems-engineer, Mela/QA, CarloMac/implementer). Workflow: discuss → plan → human approval → execute → release. Communication via Discord channels, artifacts stored on GitHub."
-version: 2.3.0
+version: 2.5.0
 author: Carlo
 ---
 
@@ -63,7 +63,9 @@ collaborating via Discord channels and GitHub repositories.
    Xiaoxin → 总结（每 bot 最多 2 轮）
 
 ② PLAN ─────────────────────────────────────────
-   Xiaoxin → 写 docs/plans/xxx.md → git push
+   Xiaoxin → 写 docs/plans/xxx.md
+           → 写 docs/knowledge/xxx.md 🧠
+           → git push
            → "@Carlo 请审批 [链接]"
 
 ③ APPROVE ──────────────────────────────────────
@@ -82,6 +84,37 @@ collaborating via Discord channels and GitHub repositories.
 ```
 
 > 🔍 = 执行 `code-review-graph` 命令。详见 `Full Cycle Walkthrough` 和 `references/crg-integration.md`。
+
+## CLI Direct Mode (non-Discord)
+
+When Carlo talks to Xiaoxin directly in the **terminal** (not Discord),
+the multi-bot pipeline is bypassed. This is faster for focused tasks:
+
+```
+Carlo (terminal) -> Xiaoxin implements + tests + docs + push
+```
+
+**When to use CLI vs Discord:**
+
+| Situation | Mode | Reason |
+|-----------|------|--------|
+| New feature, needs discussion | Discord | XPS/CarloMac/Mela participate in design |
+| Bug fix, small change | CLI | Faster, no coordination overhead |
+| Migration/refactor (e.g. MCP -> DingTalk) | CLI | Plan approved, then execute in one session |
+| Emergency fix | CLI | Fastest path |
+| Carlo doesn't know the solution | Discord | Multiple perspectives needed |
+
+**CLI mode rules:**
+- Same plan -> approve -> execute cycle, but faster (Xiaoxin does all steps)
+- Plan is written to `docs/plans/` as usual
+- Carlo's approval is verbal ("开始做", "推进", "ok") — no need for formal link posting
+- Tests must still pass before push
+- Secrets rule (pitfall #12) applies equally
+- If Carlo says stop, stop immediately — same as Discord mode
+
+**Real example (2026-05-07):** fault-analysis-mcp MCP Server -> DingTalk bot
+conversion. Plan approved via CLI discussion, implementation done in same
+session, 106 tests written and passed, all pushed in one batch.
 
 ---
 
@@ -178,19 +211,36 @@ to the most recently discussed relevant PR and act on it.
 of other bots' standby messages. No empty replies. Exception: Carlo
 asks "你在吗?" → one-word "在".
 
-### 8. 🚫 Xiaoxin Does Not Implement Code
+### 8. 🚫 Xiaoxin Does Not Implement Code (Discord Mode Only)
 
-**Real failure (2026-05-06 test):** Xiaoxin wrote scripts/dirsize.py
-entirely from scratch — write_file, test, review, bugfix. This is
-CarloMac's job (implementation) or Mela's job (testing).
+**Real failure (2026-05-06):** In Discord multi-bot mode, Xiaoxin wrote
+scripts/dirsize.py from scratch instead of delegating to CarloMac. This
+wastes the pipeline — CarloMac is the implementer.
 
-**Fix:** Xiaoxin's deliverables are plans (docs/plans/) and meeting
-minutes (docs/meetings/). Coding (write_file of .py/.js/.ts) is
-CarloMac's job. If Carlo says stop and Xiaoxin is mid-implementation,
-drop it immediately — do not finish the file, do not push.
+**Rule (Discord mode):**
+- Xiaoxin's deliverables are docs (plans, minutes, design). Coding is
+  CarloMac's job.
+- Exception: Trivial scripts under 50 lines, pre-approved in a plan,
+  and only when no other bot is online.
 
-Exception: Trivial scripts under 50 lines that are pre-approved in a
-plan, and only when no other bot is online.
+**CLI mode exception (2026-05-07):** When Carlo talks to Xiaoxin
+directly via terminal (not Discord / not multi-bot), this rule does
+**not** apply. In CLI mode:
+- There is no CarloMac available
+- Xiaoxin implements everything: code changes, tests, documentation
+- The pipeline is: plan -> implement -> test -> push, all in one session
+- The Discord bots (XPS, CarloMac, Mela) are not involved
+- Quality gates still apply: tests must pass, docs must be updated,
+  secrets must never be hardcoded
+
+**How to tell which mode you're in:**
+- **Discord**: Multiple bots are @mentioned; Carlo starts with
+  `@Xiaoxin @XPS @Mela @CarloMac`
+- **CLI**: Carlo speaks directly in terminal; no bot @mentions; Carlo
+  gives direct instructions like "开始做" / "先出方案"
+
+**Stop rule applies in both modes:** If Carlo says stop in either mode,
+stop immediately — even mid-implementation in CLI mode.
 
 ### 9. 📋 Discussion Must Close Formally
 
@@ -419,6 +469,7 @@ to match the bot's actual Discord handle.
 <project-name>/
 ├── docs/
 │   ├── plans/          # Proposals (Xiaoxin)
+│   ├── knowledge/      # Cross-bot knowledge notes 🧠
 │   ├── meetings/       # Minutes (Xiaoxin)
 │   ├── requirements/   # Analysis (XPS)
 │   ├── design/         # Technical specs (XPS)
@@ -432,12 +483,77 @@ to match the bot's actual Discord handle.
 Do NOT write to local paths like `~/projects/` — write to `<repo>/docs/...`
 and push to GitHub so all bots can access them.
 
+### 🧠 Knowledge Notes — Cross-Bot Memory
+
+After each discussion cycle, Xiaoxin writes a knowledge note to
+`docs/knowledge/<topic-slug>-<YYYY-MM-DD>.md`. This captures what was
+learned during the discussion — rejected approaches, design rationale,
+architectural constraints — so XPS, CarloMac, and Mela don't repeat work
+or rediscover pitfalls in future sessions.
+
+**Format:**
+
+```markdown
+# Knowledge: <topic> — <YYYY-MM-DD>
+
+## Context
+<which requirement/discussion this came from>
+
+## Key Insight
+<the most important thing learned>
+
+## Rejected Approaches
+- <approach A>: rejected because <reason>
+- <approach B>: rejected because <reason>
+
+## Decisions
+- <decision 1>
+- <decision 2>
+
+## Pitfalls / Gotchas
+- <pitfall discovered>
+- <unexpected constraint>
+
+## Related
+- Plan: docs/plans/<plan-file>
+- PR: #<number>
+```
+
+**When to write:**
+- **Xiaoxin** (required): After discussion closes, same time as writing the plan.
+  If a plan already captures decisions, the knowledge note focuses on *what
+  was learned, not what was decided*.
+- **CarloMac** (optional but encouraged): After implementation, if something
+  unexpected was discovered — API quirks, dependency gotchas, test flakiness.
+- **Mela** (optional): After review, if a recurring code issue pattern was found.
+- **XPS** (optional): After analysis, if a non-obvious architectural constraint surfaced.
+
+**Why this helps:**
+- XPS's analysis survives to inform CarloMac's implementation
+- CarloMac's gotchas don't get rediscovered by Mela in the next cycle
+- Scarce bot context (SOUL.md) doesn't need to hold every historical detail
+- New team members (or future you) can skim docs/knowledge/ for context
+
 ### Tooling: code-review-graph
 
 [code-review-graph](https://github.com/tirth8205/code-review-graph) is
 installed on Xiaoxin's WSL and configured for LogisticSystem. It builds
 a Tree-sitter based knowledge graph of the codebase and exposes 28 MCP
 tools for impact analysis, change detection, and context-aware reviews.
+
+### Operational Cadence: GBrain Evening Summary
+
+A cron job (`gbrain-晚间总结`) runs daily at 18:00, generating a
+structured summary of the day's work using GBrain + session history.
+To make it aware of project context from Hermes memory, sync memory
+pages into GBrain — see `references/gbrain-memory-sync.md`.
+
+Current cron schedule on Xiaoxin WSL:
+- `gbrain-晚间总结` — daily 18:00
+- `team-workflow-sync` — every 30 min
+- `xiaoxin-healthcheck` — every 2 hours
+
+See `references/auto-tasks-config.md` for how to replicate on other machines.
 
 **When to use during pipeline:**
 - **XPS** (pre-design): `code-review-graph detect-changes --base main` to
@@ -467,6 +583,7 @@ other machines, and MCP server configuration.
    → `@Mela`
 5. **Mela** → risks + CRG blast radius analysis → `@Xiaoxin`
 6. **Xiaoxin** → summary → writes `docs/plans/<topic>-<date>.md`
+   → writes `docs/knowledge/<topic>-<date>.md` 🧠 (key insight, rejected approaches, pitfalls)
    → `git push` → `@Carlo 方案已完成：<URL> 请审批`
 7. **Carlo** → "批准" (or "修改XX部分")
 8. **Xiaoxin** → `@CarloMac 请开始实现` (or `@XPS 请调整方案`)
@@ -510,7 +627,7 @@ code-review-graph status
 |-------|-----------|-----|
 | Bot doesn't speak | Previous bot didn't @mention it (text vs real mention) | Check `_resolve_text_mentions` is patched |
 | Other bots don't see messages | Thread created by auto_thread | Set `discord.auto_thread: false` |
-| Xiaoxin analyzes instead of coordinating | SOUL.md too weak | Use strict "NEVER analyze — not your job" wording |
+| Xiaoxin codes when shouldn't | Discord mode triggered but Carlo meant CLI mode | Check context: if no bots @mentioned and no Discord channel, it's CLI mode. Pitfall #8 covers this. |
 | XPS writes files nobody else can see | Files written to local disk | Must use GitHub repo; `git pull` before write |
 | XPS commits but other bots can't find the file | `git push` failed (credential/permission) | Next bot runs `git pull` to verify; report failure to Carlo |
 | Git push fails with `Authentication failed` | **Two possible causes**: 401 (invalid PAT) or 403 (valid PAT, no org access). **ALWAYS test first**: `gh api repos/<org>/<repo>` — 401 = bad token, false = no push access | 401 → Carlo generates new PAT. 403 → add collaborator or org-scoped PAT. During stalemate see `references/credential-stalemate-protocol.md` |
@@ -523,3 +640,4 @@ code-review-graph status
 | Carlo slow to approve | Human delay — PR sitting open | **Pre-build during delay**: Write implementation based on approved design, stash locally. When Carlo merges, push immediately. See `references/pre-build-during-wait.md` and `references/python-cli-tool-pattern.md` for an example (dirsize.py). |
 | Git conflict | Two bots push simultaneously | Feature branches; `git pull --rebase` before push |
 | Discord bot offline but gateway running | state.db locked by CLI session | See `references/discord-gateway-diagnosis.md` — conflict between HERMES CLI session and gateway process sharing same state.db |
+| SSH to GitHub port 22 times out, HTTPS works | WSL network: SSH (port 22) intermittently blocked or slow, HTTPS (port 443) reliable | Fall back to HTTPS: `git remote set-url origin https://github.com/<user>/<repo>.git`; push via HTTPS; switch back to SSH when network recovers. This is a WSL quirk, not a credential issue. |
