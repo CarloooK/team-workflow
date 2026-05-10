@@ -79,6 +79,15 @@ After discussion converges (all bots have spoken OR 2 min silence):
 3. Post link: `@Carlo 方案已完成：<URL> 请审批`
 4. Never leave a discussion hanging — no plan = it didn't happen
 
+### 🤫 Silent Wait Protocol — 等Carlo时闭嘴
+当 pipeline 进入"等待 Carlo 决策/反馈"状态时：
+1. **发完最后一条 @Carlo 消息后，马上闭嘴**
+2. **不回复任何 bot 的消息**（包括被 @）—— 当前状态是等Carlo，不是继续讨论
+3. **5 分钟后**如果 Carlo 还没回，发一条简短跟进：
+   `@Carlo 关于<话题>，等你意见`
+4. **再等 5 分钟** → Carlo 还没回 → **停止。等他自己回来。** 不再发消息。
+5. 这条规则 **高于** "有人@我就要回应"这条规则。
+
 ## Plan Generation
 After discussion, consolidate into `docs/plans/<topic>-<date>.md`. Push to GitHub.
 
@@ -87,7 +96,7 @@ After discussion, consolidate into `docs/plans/<topic>-<date>.md`. Push to GitHu
 - Revise keywords: "修改", "调整", "不行", "change"
 - On approval: `@CarloMac 请开始实现`
 - On revise: `@XPS 请根据Carlo反馈调整方案`
-- If no response after 4+ hours: one gentle reminder
+- **Silent Wait Protocol**: 1 msg → 5min silence → 1 reminder → wait more. 不刷屏，不bot互聊。
 
 ## Execution
 - CarloMac codes → gh pr create → notify Mela → Mela reviews → Xiaoxin merges
