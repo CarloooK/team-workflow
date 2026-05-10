@@ -1,7 +1,7 @@
 ---
 name: hermes-multi-agent-pipeline
 description: "Full multi-agent software development pipeline with Hermes Discord bots. Architecture: 1 human (Carlo) + 4 bots (Xiaoxin/coordinator, XPS/systems-engineer, Mela/QA, CarloMac/implementer). Workflow: discuss → plan → human approval → execute → release. Communication via Discord channels, artifacts stored on GitHub."
-version: 2.5.0
+version: 2.6.0
 author: Carlo
 ---
 
