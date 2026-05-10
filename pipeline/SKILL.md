@@ -517,6 +517,7 @@ to match the bot's actual Discord handle.
 ├── docs/
 │   ├── plans/          # Proposals (Xiaoxin)
 │   ├── knowledge/      # Cross-bot knowledge notes 🧠
+│   ├── session/        # Discussion state for crash recovery 🔄
 │   ├── meetings/       # Minutes (Xiaoxin)
 │   ├── requirements/   # Analysis (XPS)
 │   ├── design/         # Technical specs (XPS)
@@ -586,6 +587,69 @@ or rediscover pitfalls in future sessions.
 - CarloMac's gotchas don't get rediscovered by Mela in the next cycle
 - Scarce bot context (SOUL.md) doesn't need to hold every historical detail
 - New team members (or future you) can skim docs/knowledge/ for context
+
+### 🔄 Session Persistence — 断线恢复
+
+Gateway 掉线重启后，bot 会丢失对话上下文。为此，在每个 pipeline
+里程碑写入 `docs/session/current.md`，重启后自动恢复。
+
+**格式：**
+
+```markdown
+# Session — <YYYY-MM-DD HH:MM>
+
+## Topic
+<简要描述当前讨论>
+
+## Stage
+discuss | plan | approve | execute | release
+
+## Last Message
+<who: what was said>
+
+## Waiting For
+<who> — <what we're waiting for>
+
+## State
+- XPS: <何轮次 / 等待中 / 已完成>
+- CarloMac: <同上>
+- Mela: <同上>
+- Xiaoxin: <同上>
+- Carlo: <同上>
+
+## Next Expected Action
+<下一步谁该做什么>
+```
+
+**写入时机（Xiaoxin 责任）：**
+
+| 阶段 | 触发 | 写入 session |
+|------|------|-------------|
+| 讨论结束 | Xiaoxin 写 plan + knowledge note 时 | 同步写入 session |
+| Carlo 审批 | Carlo 批准/修改后 | 更新 stage + waiting for |
+| 实现开始 | CarloMac 开始编码 | 更新 stage |
+| PR 提交 | PR 发出 | 更新 stage + waiting for Carlo |
+| 发布完成 | 发布后 | 清除 session 文件 |
+
+**恢复流程（任何 bot gateway 重启后）：**
+
+```text
+1. bot 启动 → 检查 GitHub 仓库中 docs/session/current.md 是否存在
+2. 如果存在:
+   a. 读取 session 内容
+   b. 在 Discord 发一条恢复消息:
+      "@Carlo 我重启了。上次我们在讨论 <topic> (stage: <stage>)，
+      等你 <next expected action>。继续吗？"
+   c. 同时 XPS/CarloMac/Mela 也执行同样的恢复流程
+   d. 第一个发恢复消息的 bot 最好汇总一下
+3. 如果不存在:
+   a. 没有进行中的 session → 正常待命
+   b. 可以检查最后一次 plan/knowledge note 来辅助恢复
+```
+
+> **会话文件自动清理：** 当 pipeline 完成（发布后），删除
+> `docs/session/current.md`。如果跨 session 需要，保留 `docs/session/` 下的
+> 归档（但目前不强制，当前阶段先保证 current.md 准确即可）。
 
 ### Tooling: code-review-graph
 
@@ -694,4 +758,5 @@ code-review-graph status
 | Carlo slow to approve | Human delay — PR sitting open | **Pre-build during delay**: Write implementation based on approved design, stash locally. When Carlo merges, push immediately. See `references/pre-build-during-wait.md` and `references/python-cli-tool-pattern.md` for an example (dirsize.py). |
 | Git conflict | Two bots push simultaneously | Feature branches; `git pull --rebase` before push |
 | Discord bot offline but gateway running | state.db locked by CLI session | See `references/discord-gateway-diagnosis.md` — conflict between HERMES CLI session and gateway process sharing same state.db |
+| Gateway 掉线后重启 | 进程崩溃或网络断开 | Watchdog 自动重启（每2分钟检查）。重启后 Session Recovery 读取 docs/session/current.md 恢复上下文。|
 | SSH to GitHub port 22 times out, HTTPS works | WSL network: SSH (port 22) intermittently blocked or slow, HTTPS (port 443) reliable | Fall back to HTTPS: `git remote set-url origin https://github.com/<user>/<repo>.git`; push via HTTPS; switch back to SSH when network recovers. This is a WSL quirk, not a credential issue. |

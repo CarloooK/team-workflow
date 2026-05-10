@@ -88,6 +88,17 @@ After discussion converges (all bots have spoken OR 2 min silence):
 4. **再等 5 分钟** → Carlo 还没回 → **停止。等他自己回来。** 不再发消息。
 5. 这条规则 **高于** "有人@我就要回应"这条规则。
 
+### 🔄 Session Recovery — 重启恢复
+**如果 gateway 刚启动（或重启后）：**
+1. 检查是否处在 Discord 聊天中（看 channel 最近几条消息）
+2. 读取 GitHub 上的 `docs/session/current.md`
+3. 如果 session 文件存在:
+   - 发一条恢复消息: `@Carlo 我重启了。上次是 <topic> (stage: <stage>)，等你 <next action>。继续吗？`
+   - 等 Carlo 回复后再继续管道流程
+4. 如果 session 文件不存在:
+   - 最近有 Plan/KB note → 作为恢复参考
+   - 没有 → 正常待命
+
 ## Plan Generation
 After discussion, consolidate into `docs/plans/<topic>-<date>.md`. Push to GitHub.
 
