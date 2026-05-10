@@ -56,6 +56,8 @@ collaborating via Discord channels and GitHub repositories.
 
 ```
 ① DISCUSS ──────────────────────────────────────
+   Xiaoxin → 📖 查 docs/knowledge/ 关联历史
+           → 转发给 Carlo
    Carlo → 发需求
    XPS → 可行性分析 + 🔍CRG status → @CarloMac
    CarloMac → 实现方案 + 🔍CRG detect-changes → @Mela
@@ -311,7 +313,52 @@ grep -o '<@[0-9]*>' ~/.hermes/logs/gateway.log | sort -u
 
 **Exception:** Public demo/test keys created specifically for open-source examples (e.g., Stripe test mode keys, public API demo tokens).
 
-### 13. 👤 Don't confuse Carlo with a bot — verify who you're addressing
+### 14. 🤫 Silent Wait Protocol — 等Carlo时全员闭嘴
+
+**Real failure:** 讨论进入等待Carlo决策的阶段后，bot之间还在互相@回应，Carlo看到的是
+多条无关的bot对话刷屏。他要的是一条消息+安静等待。
+
+**规则：**
+
+当 pipeline 到达 **等待 Carlo 决策/反馈** 的状态时：
+
+```
+触发条件: 
+- ① 讨论中需要Carlo决定方向（"这个方案用A还是B？"）
+- ② Plan已发布，等审批（"@Carlo 方案已完成，请审批"）
+- ③ Implementation已提PR，等审批（"@Carlo PR #3 请Review"）
+- ④ Carlo问了问题，在处理中
+
+行为:
+1. 发完最后一条 @Carlo 的消息后 → **马上闭嘴**
+2. 之后所有bot不得再发送任何消息 — 包括:
+   - ❌ 对其他bot的回应
+   - ❌ "收到，等Carlo回复"
+   - ❌ 任何分析、补充、猜测、跟进
+   - ✅ 唯一例外：Carlo回来了，主动@你或回复了你的问题
+3. 如果5分钟后Carlo没回应 → **只允许一条简短提醒:**
+   `@Carlo 关于<刚才的话题>，等你意见`
+4. 提醒后再等5分钟 → Carlo还没回 → **停止。等Carlo自己回来。**
+   不再发第三条消息。不再@任何人。
+
+超过4小时的场景走原有的缓慢审批流程（Pitfall看板），但静默期间始终不准bot互聊。
+```
+
+**为什么 bot 会互相触发刷屏：**
+- XPS 说了一句多余的"等审批中" → CarloMac 看到"等审批中"觉得要补充 → Mela 也来一句
+- 解决：**任何 bot 意识到"当前在等Carlo" 后，不再回复任何其他bot的消息，直接保持沉默。**
+
+**SOUL.md 必须加的规则：**
+```markdown
+### 🤫 Silent Wait Protocol
+当最后一条消息是 @Carlo 等待其决策/反馈时:
+1. 不回复任何bot的消息（包括 @你）
+2. 5分钟后发一条简短跟进 "@Carlo <话题> 等你意见"
+3. 之后不管Carlo回不回应，不再发任何消息
+4. 这条规则 > 所有其他规则（包括"有人@我就要回应"）
+```
+
+### 15. 👤 Don't confuse Carlo with a bot — verify who you're addressing
 
 **Real failure (2026-05-07):** Xiaoxin read Carlo's question and replied
 addressing him as "@XPS" — confusing the human (Carlo) with a bot (XPS).
@@ -485,13 +532,19 @@ and push to GitHub so all bots can access them.
 
 ### 🧠 Knowledge Notes — Cross-Bot Memory
 
+**Before starting a new discussion, Xiaoxin checks `docs/knowledge/` for
+relevant existing notes.** If a previous discussion already rejected an
+approach or decided on a direction, skip the re-discussion and link to
+the existing knowledge note instead. This prevents bots from repeating
+work settled in earlier sessions.
+
 After each discussion cycle, Xiaoxin writes a knowledge note to
 `docs/knowledge/<topic-slug>-<YYYY-MM-DD>.md`. This captures what was
 learned during the discussion — rejected approaches, design rationale,
 architectural constraints — so XPS, CarloMac, and Mela don't repeat work
 or rediscover pitfalls in future sessions.
 
-**Format:**
+**Format (see `templates/knowledge-note.md` for a boilerplate):**
 
 ```markdown
 # Knowledge: <topic> — <YYYY-MM-DD>
@@ -576,7 +629,8 @@ other machines, and MCP server configuration.
 
 1. **Carlo posts in Discord channel (not thread):**
    `@Xiaoxin @XPS @Mela @CarloMac 我们需要一个CLI工具...`
-2. **Xiaoxin** (one line only): `@XPS 请分析可行性`
+2. **Xiaoxin** → 📖 checks `docs/knowledge/` for relevant prior decisions
+   → one line only: `@XPS 请分析可行性（查过 docs/knowledge/，没有重叠历史）`
 3. **XPS** → feasibility analysis + CRG status to understand module structure
    → `@CarloMac`
 4. **CarloMac** → implementation approach + CRG detect-changes on affected area
@@ -636,7 +690,7 @@ code-review-graph status
 | Bot addresses Carlo as another bot ("@XPS 请分析" when Carlo is speaking) | Reflexive delegation — sees technical question, replies to wrong person | Always check message author first. If Carlo wrote it, address Carlo. See Critical Pitfall #13 |
 | @mentions not working in Discord | Text `@Name` not real `<@ID>` | Patch discord.py per references |
 | Discussion never ends | No round limit in SOUL.md | Add "max 2 rounds, then close" |
-| Carlo slow to approve | Human delay | Xiaoxin: one reminder after 4h; during wait switch to productive standby — see `references/credential-stalemate-protocol.md` |
+| Carlo slow to approve | Human delay — waiting for decision | Follow Silent Wait Protocol (Pitfall #14): 1 msg → 5min silence → 1 reminder → wait more |
 | Carlo slow to approve | Human delay — PR sitting open | **Pre-build during delay**: Write implementation based on approved design, stash locally. When Carlo merges, push immediately. See `references/pre-build-during-wait.md` and `references/python-cli-tool-pattern.md` for an example (dirsize.py). |
 | Git conflict | Two bots push simultaneously | Feature branches; `git pull --rebase` before push |
 | Discord bot offline but gateway running | state.db locked by CLI session | See `references/discord-gateway-diagnosis.md` — conflict between HERMES CLI session and gateway process sharing same state.db |
