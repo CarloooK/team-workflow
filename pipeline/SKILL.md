@@ -87,6 +87,94 @@ collaborating via Discord channels and GitHub repositories.
 
 > 🔍 = 执行 `code-review-graph` 命令。详见 `Full Cycle Walkthrough` 和 `references/crg-integration.md`。
 
+## Track Mode — 多功能线并行开发
+
+> 灵感来源: wshobson/agents 的 Conductor plugin track-based 开发模式
+
+当 Carlo 的需求涵盖了多个独立功能时，可以拆分为 **多个 track** 并行推进。
+
+### 什么是 Track？
+
+Track = 一条独立的功能线，有完整的 spec → plan → implement → verify 生命周期。
+
+```
+需求: "给物流系统加订单追踪和司机App"
+    ├── Track A: 订单追踪 (NestJS API + 通知)
+    │   ├── Spec: /api/orders/:id/tracking endpoint
+    │   ├── Plan: 3 个 phase
+    │   ├── Status: ✅ 已完成
+    │   └── Revert: git revert <track-a-range>
+    │
+    └── Track B: 司机App (Flutter 页面)
+        ├── Spec: 司机登录 + 接单 + 状态更新
+        ├── Plan: 2 个 phase
+        ├── Status: 🔄 Phase 2 进行中
+        └── Revert: git revert <track-b-range>
+```
+
+### 什么时候用 Track Mode
+
+| 条件 | 单流程 (默认) | Track Mode |
+|------|:---:|:---:|
+| 单个功能 | ✅ | — |
+| 2-3 个独立但相关的功能 | — | ✅ |
+| 需要分工（XPS 做 A track，CarloMac 做 B track） | — | ✅ |
+| Carlo 想先看 A 再决定做不做 B | — | ✅ |
+
+### Track 工作流
+
+```
+Carlo: "需求包含A和B，先做A，B的spec先出"
+    │
+    ├── Track A: XPS → 出spec → CarloMac → 实现 → Mela → 测试
+    ├── Track B: XPS → 出spec (待Carlo审批后才继续)
+    │
+    └── 等Carlo确认后，Track B 从spec继续推进
+```
+
+**文档结构：**
+```text
+docs/
+├── tracks/
+│   ├── track-a-order-tracking/
+│   │   ├── spec.md        # XPS 出
+│   │   ├── plan.md         # Xiaoxin 汇总
+│   │   └── status.md       # 实时状态
+│   └── track-b-driver-app/
+│       ├── spec.md
+│       └── plan.md
+```
+
+### 语义化回滚
+
+按 track 回滚，不是按 commit：
+
+```bash
+# 回滚 Track A（所有相关 commit）
+# 1. 找到 track 的 commit 范围
+git log --oneline --grep="track-a" --all
+
+# 2. 创建反向 commit（不破坏历史）
+git revert <start-commit>..<end-commit> -m "revert: 回滚 Track A - <原因>"
+
+# 3. 更新 track 状态
+echo "Status: Reverted" > docs/tracks/track-a-order-tracking/status.md
+git add docs/tracks/ && git commit -m "track-a: 标记为已回滚"
+git push
+```
+
+### Track 的 SOUL.md 规则
+
+在 Xiaoxin 的 SOUL.md 添加：
+```markdown
+### Track Mode
+当 Carlo 提出多需求时:
+1. 识别可独立推进的 track
+2. 创建 docs/tracks/<track-name>/ 目录
+3. 每个 track 独立走 discuss → plan → approve → execute
+4. 通知 Carlo: "@Carlo 识别出N个track，A已完成，B等spec审批"
+```
+
 ## CLI Direct Mode (non-Discord)
 
 When Carlo talks to Xiaoxin directly in the **terminal** (not Discord),
