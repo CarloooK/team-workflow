@@ -1,7 +1,7 @@
 ---
 name: hermes-multi-agent-pipeline
 description: "Full multi-agent software development pipeline with Hermes Discord bots. Architecture: 1 human (Carlo) + 4 bots (Xiaoxin/coordinator, XPS/systems-engineer, Mela/QA, CarloMac/implementer). Workflow: discuss → plan → human approval → execute → release. Communication via Discord channels, artifacts stored on GitHub."
-version: 2.6.0
+version: 2.2.0
 author: Carlo
 ---
 
@@ -56,8 +56,6 @@ collaborating via Discord channels and GitHub repositories.
 
 ```
 ① DISCUSS ──────────────────────────────────────
-   Xiaoxin → 📖 查 docs/knowledge/ 关联历史
-           → 转发给 Carlo
    Carlo → 发需求
    XPS → 可行性分析 + 🔍CRG status → @CarloMac
    CarloMac → 实现方案 + 🔍CRG detect-changes → @Mela
@@ -65,9 +63,7 @@ collaborating via Discord channels and GitHub repositories.
    Xiaoxin → 总结（每 bot 最多 2 轮）
 
 ② PLAN ─────────────────────────────────────────
-   Xiaoxin → 写 docs/plans/xxx.md
-           → 写 docs/knowledge/xxx.md 🧠
-           → git push
+   Xiaoxin → 写 docs/plans/xxx.md → git push
            → "@Carlo 请审批 [链接]"
 
 ③ APPROVE ──────────────────────────────────────
@@ -86,125 +82,6 @@ collaborating via Discord channels and GitHub repositories.
 ```
 
 > 🔍 = 执行 `code-review-graph` 命令。详见 `Full Cycle Walkthrough` 和 `references/crg-integration.md`。
-
-## Track Mode — 多功能线并行开发
-
-> 灵感来源: wshobson/agents 的 Conductor plugin track-based 开发模式
-
-当 Carlo 的需求涵盖了多个独立功能时，可以拆分为 **多个 track** 并行推进。
-
-### 什么是 Track？
-
-Track = 一条独立的功能线，有完整的 spec → plan → implement → verify 生命周期。
-
-```
-需求: "给物流系统加订单追踪和司机App"
-    ├── Track A: 订单追踪 (NestJS API + 通知)
-    │   ├── Spec: /api/orders/:id/tracking endpoint
-    │   ├── Plan: 3 个 phase
-    │   ├── Status: ✅ 已完成
-    │   └── Revert: git revert <track-a-range>
-    │
-    └── Track B: 司机App (Flutter 页面)
-        ├── Spec: 司机登录 + 接单 + 状态更新
-        ├── Plan: 2 个 phase
-        ├── Status: 🔄 Phase 2 进行中
-        └── Revert: git revert <track-b-range>
-```
-
-### 什么时候用 Track Mode
-
-| 条件 | 单流程 (默认) | Track Mode |
-|------|:---:|:---:|
-| 单个功能 | ✅ | — |
-| 2-3 个独立但相关的功能 | — | ✅ |
-| 需要分工（XPS 做 A track，CarloMac 做 B track） | — | ✅ |
-| Carlo 想先看 A 再决定做不做 B | — | ✅ |
-
-### Track 工作流
-
-```
-Carlo: "需求包含A和B，先做A，B的spec先出"
-    │
-    ├── Track A: XPS → 出spec → CarloMac → 实现 → Mela → 测试
-    ├── Track B: XPS → 出spec (待Carlo审批后才继续)
-    │
-    └── 等Carlo确认后，Track B 从spec继续推进
-```
-
-**文档结构：**
-```text
-docs/
-├── tracks/
-│   ├── track-a-order-tracking/
-│   │   ├── spec.md        # XPS 出
-│   │   ├── plan.md         # Xiaoxin 汇总
-│   │   └── status.md       # 实时状态
-│   └── track-b-driver-app/
-│       ├── spec.md
-│       └── plan.md
-```
-
-### 语义化回滚
-
-按 track 回滚，不是按 commit：
-
-```bash
-# 回滚 Track A（所有相关 commit）
-# 1. 找到 track 的 commit 范围
-git log --oneline --grep="track-a" --all
-
-# 2. 创建反向 commit（不破坏历史）
-git revert <start-commit>..<end-commit> -m "revert: 回滚 Track A - <原因>"
-
-# 3. 更新 track 状态
-echo "Status: Reverted" > docs/tracks/track-a-order-tracking/status.md
-git add docs/tracks/ && git commit -m "track-a: 标记为已回滚"
-git push
-```
-
-### Track 的 SOUL.md 规则
-
-在 Xiaoxin 的 SOUL.md 添加：
-```markdown
-### Track Mode
-当 Carlo 提出多需求时:
-1. 识别可独立推进的 track
-2. 创建 docs/tracks/<track-name>/ 目录
-3. 每个 track 独立走 discuss → plan → approve → execute
-4. 通知 Carlo: "@Carlo 识别出N个track，A已完成，B等spec审批"
-```
-
-## CLI Direct Mode (non-Discord)
-
-When Carlo talks to Xiaoxin directly in the **terminal** (not Discord),
-the multi-bot pipeline is bypassed. This is faster for focused tasks:
-
-```
-Carlo (terminal) -> Xiaoxin implements + tests + docs + push
-```
-
-**When to use CLI vs Discord:**
-
-| Situation | Mode | Reason |
-|-----------|------|--------|
-| New feature, needs discussion | Discord | XPS/CarloMac/Mela participate in design |
-| Bug fix, small change | CLI | Faster, no coordination overhead |
-| Migration/refactor (e.g. MCP -> DingTalk) | CLI | Plan approved, then execute in one session |
-| Emergency fix | CLI | Fastest path |
-| Carlo doesn't know the solution | Discord | Multiple perspectives needed |
-
-**CLI mode rules:**
-- Same plan -> approve -> execute cycle, but faster (Xiaoxin does all steps)
-- Plan is written to `docs/plans/` as usual
-- Carlo's approval is verbal ("开始做", "推进", "ok") — no need for formal link posting
-- Tests must still pass before push
-- Secrets rule (pitfall #12) applies equally
-- If Carlo says stop, stop immediately — same as Discord mode
-
-**Real example (2026-05-07):** fault-analysis-mcp MCP Server -> DingTalk bot
-conversion. Plan approved via CLI discussion, implementation done in same
-session, 106 tests written and passed, all pushed in one batch.
 
 ---
 
@@ -301,36 +178,19 @@ to the most recently discussed relevant PR and act on it.
 of other bots' standby messages. No empty replies. Exception: Carlo
 asks "你在吗?" → one-word "在".
 
-### 8. 🚫 Xiaoxin Does Not Implement Code (Discord Mode Only)
+### 8. 🚫 Xiaoxin Does Not Implement Code
 
-**Real failure (2026-05-06):** In Discord multi-bot mode, Xiaoxin wrote
-scripts/dirsize.py from scratch instead of delegating to CarloMac. This
-wastes the pipeline — CarloMac is the implementer.
+**Real failure (2026-05-06 test):** Xiaoxin wrote scripts/dirsize.py
+entirely from scratch — write_file, test, review, bugfix. This is
+CarloMac's job (implementation) or Mela's job (testing).
 
-**Rule (Discord mode):**
-- Xiaoxin's deliverables are docs (plans, minutes, design). Coding is
-  CarloMac's job.
-- Exception: Trivial scripts under 50 lines, pre-approved in a plan,
-  and only when no other bot is online.
+**Fix:** Xiaoxin's deliverables are plans (docs/plans/) and meeting
+minutes (docs/meetings/). Coding (write_file of .py/.js/.ts) is
+CarloMac's job. If Carlo says stop and Xiaoxin is mid-implementation,
+drop it immediately — do not finish the file, do not push.
 
-**CLI mode exception (2026-05-07):** When Carlo talks to Xiaoxin
-directly via terminal (not Discord / not multi-bot), this rule does
-**not** apply. In CLI mode:
-- There is no CarloMac available
-- Xiaoxin implements everything: code changes, tests, documentation
-- The pipeline is: plan -> implement -> test -> push, all in one session
-- The Discord bots (XPS, CarloMac, Mela) are not involved
-- Quality gates still apply: tests must pass, docs must be updated,
-  secrets must never be hardcoded
-
-**How to tell which mode you're in:**
-- **Discord**: Multiple bots are @mentioned; Carlo starts with
-  `@Xiaoxin @XPS @Mela @CarloMac`
-- **CLI**: Carlo speaks directly in terminal; no bot @mentions; Carlo
-  gives direct instructions like "开始做" / "先出方案"
-
-**Stop rule applies in both modes:** If Carlo says stop in either mode,
-stop immediately — even mid-implementation in CLI mode.
+Exception: Trivial scripts under 50 lines that are pre-approved in a
+plan, and only when no other bot is online.
 
 ### 9. 📋 Discussion Must Close Formally
 
@@ -382,71 +242,7 @@ grep -o '<@[0-9]*>' ~/.hermes/logs/gateway.log | sort -u
 - Mela: `<@1501072897383469258>`
 - CarloMac: `<@1501220920772263977>`
 
-### 12. 🔒 Secrets must NEVER be hardcoded in code or committed to GitHub
-
-**Real instruction (2026-05-07):** Carlo explicitly stated: "后续所有涉密信息，不能硬编码，更不能上传到Github".
-
-**Applies to:**
-- API keys, tokens, passwords → always use `.env` or environment variables
-- Internal business data (fault DBs, customer info, internal config) → verify it's safe to push before committing
-- Credential files (`~/.git-credentials`, `~/.ssh/*`) → added to `.gitignore` already at the system level
-- SaaS SDK secrets (DingTalk ClientID/ClientSecret, Discord tokens, GitHub PATs)
-
-**Enforcement:**
-- All `.env` files are in `.gitignore` by default — do NOT override this
-- If a project needs configuration templates, use `.env.example` with placeholder values
-- Before `git add -A`, mentally scan: "does any file I'm adding contain a secret?"
-- When wiring up a new service, the first file to create is `.env` — then reference it from code with `os.environ.get("KEY")`
-- If a secret was accidentally committed, notify Carlo immediately — do not push
-
-**Exception:** Public demo/test keys created specifically for open-source examples (e.g., Stripe test mode keys, public API demo tokens).
-
-### 14. 🤫 Silent Wait Protocol — 等Carlo时全员闭嘴
-
-**Real failure:** 讨论进入等待Carlo决策的阶段后，bot之间还在互相@回应，Carlo看到的是
-多条无关的bot对话刷屏。他要的是一条消息+安静等待。
-
-**规则：**
-
-当 pipeline 到达 **等待 Carlo 决策/反馈** 的状态时：
-
-```
-触发条件: 
-- ① 讨论中需要Carlo决定方向（"这个方案用A还是B？"）
-- ② Plan已发布，等审批（"@Carlo 方案已完成，请审批"）
-- ③ Implementation已提PR，等审批（"@Carlo PR #3 请Review"）
-- ④ Carlo问了问题，在处理中
-
-行为:
-1. 发完最后一条 @Carlo 的消息后 → **马上闭嘴**
-2. 之后所有bot不得再发送任何消息 — 包括:
-   - ❌ 对其他bot的回应
-   - ❌ "收到，等Carlo回复"
-   - ❌ 任何分析、补充、猜测、跟进
-   - ✅ 唯一例外：Carlo回来了，主动@你或回复了你的问题
-3. 如果5分钟后Carlo没回应 → **只允许一条简短提醒:**
-   `@Carlo 关于<刚才的话题>，等你意见`
-4. 提醒后再等5分钟 → Carlo还没回 → **停止。等Carlo自己回来。**
-   不再发第三条消息。不再@任何人。
-
-超过4小时的场景走原有的缓慢审批流程（Pitfall看板），但静默期间始终不准bot互聊。
-```
-
-**为什么 bot 会互相触发刷屏：**
-- XPS 说了一句多余的"等审批中" → CarloMac 看到"等审批中"觉得要补充 → Mela 也来一句
-- 解决：**任何 bot 意识到"当前在等Carlo" 后，不再回复任何其他bot的消息，直接保持沉默。**
-
-**SOUL.md 必须加的规则：**
-```markdown
-### 🤫 Silent Wait Protocol
-当最后一条消息是 @Carlo 等待其决策/反馈时:
-1. 不回复任何bot的消息（包括 @你）
-2. 5分钟后发一条简短跟进 "@Carlo <话题> 等你意见"
-3. 之后不管Carlo回不回应，不再发任何消息
-4. 这条规则 > 所有其他规则（包括"有人@我就要回应"）
-```
-
-### 15. 👤 Don't confuse Carlo with a bot — verify who you're addressing
+### 11. 👤 Don't confuse Carlo with a bot — verify who you're addressing
 
 **Real failure (2026-05-07):** Xiaoxin read Carlo's question and replied
 addressing him as "@XPS" — confusing the human (Carlo) with a bot (XPS).
@@ -604,8 +400,6 @@ to match the bot's actual Discord handle.
 <project-name>/
 ├── docs/
 │   ├── plans/          # Proposals (Xiaoxin)
-│   ├── knowledge/      # Cross-bot knowledge notes 🧠
-│   ├── session/        # Discussion state for crash recovery 🔄
 │   ├── meetings/       # Minutes (Xiaoxin)
 │   ├── requirements/   # Analysis (XPS)
 │   ├── design/         # Technical specs (XPS)
@@ -619,146 +413,12 @@ to match the bot's actual Discord handle.
 Do NOT write to local paths like `~/projects/` — write to `<repo>/docs/...`
 and push to GitHub so all bots can access them.
 
-### 🧠 Knowledge Notes — Cross-Bot Memory
-
-**Before starting a new discussion, Xiaoxin checks `docs/knowledge/` for
-relevant existing notes.** If a previous discussion already rejected an
-approach or decided on a direction, skip the re-discussion and link to
-the existing knowledge note instead. This prevents bots from repeating
-work settled in earlier sessions.
-
-After each discussion cycle, Xiaoxin writes a knowledge note to
-`docs/knowledge/<topic-slug>-<YYYY-MM-DD>.md`. This captures what was
-learned during the discussion — rejected approaches, design rationale,
-architectural constraints — so XPS, CarloMac, and Mela don't repeat work
-or rediscover pitfalls in future sessions.
-
-**Format (see `templates/knowledge-note.md` for a boilerplate):**
-
-```markdown
-# Knowledge: <topic> — <YYYY-MM-DD>
-
-## Context
-<which requirement/discussion this came from>
-
-## Key Insight
-<the most important thing learned>
-
-## Rejected Approaches
-- <approach A>: rejected because <reason>
-- <approach B>: rejected because <reason>
-
-## Decisions
-- <decision 1>
-- <decision 2>
-
-## Pitfalls / Gotchas
-- <pitfall discovered>
-- <unexpected constraint>
-
-## Related
-- Plan: docs/plans/<plan-file>
-- PR: #<number>
-```
-
-**When to write:**
-- **Xiaoxin** (required): After discussion closes, same time as writing the plan.
-  If a plan already captures decisions, the knowledge note focuses on *what
-  was learned, not what was decided*.
-- **CarloMac** (optional but encouraged): After implementation, if something
-  unexpected was discovered — API quirks, dependency gotchas, test flakiness.
-- **Mela** (optional): After review, if a recurring code issue pattern was found.
-- **XPS** (optional): After analysis, if a non-obvious architectural constraint surfaced.
-
-**Why this helps:**
-- XPS's analysis survives to inform CarloMac's implementation
-- CarloMac's gotchas don't get rediscovered by Mela in the next cycle
-- Scarce bot context (SOUL.md) doesn't need to hold every historical detail
-- New team members (or future you) can skim docs/knowledge/ for context
-
-### 🔄 Session Persistence — 断线恢复
-
-Gateway 掉线重启后，bot 会丢失对话上下文。为此，在每个 pipeline
-里程碑写入 `docs/session/current.md`，重启后自动恢复。
-
-**格式：**
-
-```markdown
-# Session — <YYYY-MM-DD HH:MM>
-
-## Topic
-<简要描述当前讨论>
-
-## Stage
-discuss | plan | approve | execute | release
-
-## Last Message
-<who: what was said>
-
-## Waiting For
-<who> — <what we're waiting for>
-
-## State
-- XPS: <何轮次 / 等待中 / 已完成>
-- CarloMac: <同上>
-- Mela: <同上>
-- Xiaoxin: <同上>
-- Carlo: <同上>
-
-## Next Expected Action
-<下一步谁该做什么>
-```
-
-**写入时机（Xiaoxin 责任）：**
-
-| 阶段 | 触发 | 写入 session |
-|------|------|-------------|
-| 讨论结束 | Xiaoxin 写 plan + knowledge note 时 | 同步写入 session |
-| Carlo 审批 | Carlo 批准/修改后 | 更新 stage + waiting for |
-| 实现开始 | CarloMac 开始编码 | 更新 stage |
-| PR 提交 | PR 发出 | 更新 stage + waiting for Carlo |
-| 发布完成 | 发布后 | 清除 session 文件 |
-
-**恢复流程（任何 bot gateway 重启后）：**
-
-```text
-1. bot 启动 → 检查 GitHub 仓库中 docs/session/current.md 是否存在
-2. 如果存在:
-   a. 读取 session 内容
-   b. 在 Discord 发一条恢复消息:
-      "@Carlo 我重启了。上次我们在讨论 <topic> (stage: <stage>)，
-      等你 <next expected action>。继续吗？"
-   c. 同时 XPS/CarloMac/Mela 也执行同样的恢复流程
-   d. 第一个发恢复消息的 bot 最好汇总一下
-3. 如果不存在:
-   a. 没有进行中的 session → 正常待命
-   b. 可以检查最后一次 plan/knowledge note 来辅助恢复
-```
-
-> **会话文件自动清理：** 当 pipeline 完成（发布后），删除
-> `docs/session/current.md`。如果跨 session 需要，保留 `docs/session/` 下的
-> 归档（但目前不强制，当前阶段先保证 current.md 准确即可）。
-
 ### Tooling: code-review-graph
 
 [code-review-graph](https://github.com/tirth8205/code-review-graph) is
 installed on Xiaoxin's WSL and configured for LogisticSystem. It builds
 a Tree-sitter based knowledge graph of the codebase and exposes 28 MCP
 tools for impact analysis, change detection, and context-aware reviews.
-
-### Operational Cadence: GBrain Evening Summary
-
-A cron job (`gbrain-晚间总结`) runs daily at 18:00, generating a
-structured summary of the day's work using GBrain + session history.
-To make it aware of project context from Hermes memory, sync memory
-pages into GBrain — see `references/gbrain-memory-sync.md`.
-
-Current cron schedule on Xiaoxin WSL:
-- `gbrain-晚间总结` — daily 18:00
-- `team-workflow-sync` — every 30 min
-- `xiaoxin-healthcheck` — every 2 hours
-
-See `references/auto-tasks-config.md` for how to replicate on other machines.
 
 **When to use during pipeline:**
 - **XPS** (pre-design): `code-review-graph detect-changes --base main` to
@@ -781,15 +441,13 @@ other machines, and MCP server configuration.
 
 1. **Carlo posts in Discord channel (not thread):**
    `@Xiaoxin @XPS @Mela @CarloMac 我们需要一个CLI工具...`
-2. **Xiaoxin** → 📖 checks `docs/knowledge/` for relevant prior decisions
-   → one line only: `@XPS 请分析可行性（查过 docs/knowledge/，没有重叠历史）`
+2. **Xiaoxin** (one line only): `@XPS 请分析可行性`
 3. **XPS** → feasibility analysis + CRG status to understand module structure
    → `@CarloMac`
 4. **CarloMac** → implementation approach + CRG detect-changes on affected area
    → `@Mela`
 5. **Mela** → risks + CRG blast radius analysis → `@Xiaoxin`
 6. **Xiaoxin** → summary → writes `docs/plans/<topic>-<date>.md`
-   → writes `docs/knowledge/<topic>-<date>.md` 🧠 (key insight, rejected approaches, pitfalls)
    → `git push` → `@Carlo 方案已完成：<URL> 请审批`
 7. **Carlo** → "批准" (or "修改XX部分")
 8. **Xiaoxin** → `@CarloMac 请开始实现` (or `@XPS 请调整方案`)
@@ -833,18 +491,18 @@ code-review-graph status
 |-------|-----------|-----|
 | Bot doesn't speak | Previous bot didn't @mention it (text vs real mention) | Check `_resolve_text_mentions` is patched |
 | Other bots don't see messages | Thread created by auto_thread | Set `discord.auto_thread: false` |
-| Xiaoxin codes when shouldn't | Discord mode triggered but Carlo meant CLI mode | Check context: if no bots @mentioned and no Discord channel, it's CLI mode. Pitfall #8 covers this. |
+| Xiaoxin analyzes instead of coordinating | SOUL.md too weak | Use strict "NEVER analyze — not your job" wording |
 | XPS writes files nobody else can see | Files written to local disk | Must use GitHub repo; `git pull` before write |
 | XPS commits but other bots can't find the file | `git push` failed (credential/permission) | Next bot runs `git pull` to verify; report failure to Carlo |
 | Git push fails with `Authentication failed` | **Two possible causes**: 401 (invalid PAT) or 403 (valid PAT, no org access). **ALWAYS test first**: `gh api repos/<org>/<repo>` — 401 = bad token, false = no push access | 401 → Carlo generates new PAT. 403 → add collaborator or org-scoped PAT. During stalemate see `references/credential-stalemate-protocol.md` |
 | Authentication succeeds but pushes to wrong user | Credential file `/home/chao/.git-credentials` may be 0 bytes after `patch` tool replaced content | Always verify after any credential write: `wc -c ~/.git-credentials`; if 0 → `echo "https://user:token@github.com" > ~/.git-credentials`; see `references/git-credential-debug.md` §2 |
 | SSH says "Hi User!" but git push still denied | SSH key added to personal account, not as repo Deploy Key with write access | Generate dedicated deploy key; test with `ssh -i <key> -o IdentitiesOnly=yes -T git@github.com` — if "Hi User!" it's personal, if "Permission denied" it's not yet added anywhere |
-| Bot addresses Carlo as another bot ("@XPS 请分析" when Carlo is speaking) | Reflexive delegation — sees technical question, replies to wrong person | Always check message author first. If Carlo wrote it, address Carlo. See Critical Pitfall #13 |
+| Bot addresses Carlo as another bot ("@XPS 请分析" when Carlo is speaking) | Reflexive delegation — sees technical question, replies to wrong person | Always check message author first. If Carlo wrote it, address Carlo. See Critical Pitfall #11 |
 | @mentions not working in Discord | Text `@Name` not real `<@ID>` | Patch discord.py per references |
 | Discussion never ends | No round limit in SOUL.md | Add "max 2 rounds, then close" |
-| Carlo slow to approve | Human delay — waiting for decision | Follow Silent Wait Protocol (Pitfall #14): 1 msg → 5min silence → 1 reminder → wait more |
+| Carlo slow to approve | Human delay | Xiaoxin: one reminder after 4h; during wait switch to productive standby — see `references/credential-stalemate-protocol.md` |
 | Carlo slow to approve | Human delay — PR sitting open | **Pre-build during delay**: Write implementation based on approved design, stash locally. When Carlo merges, push immediately. See `references/pre-build-during-wait.md` and `references/python-cli-tool-pattern.md` for an example (dirsize.py). |
 | Git conflict | Two bots push simultaneously | Feature branches; `git pull --rebase` before push |
 | Discord bot offline but gateway running | state.db locked by CLI session | See `references/discord-gateway-diagnosis.md` — conflict between HERMES CLI session and gateway process sharing same state.db |
-| Gateway 掉线后重启 | 进程崩溃或网络断开 | Watchdog 自动重启（每2分钟检查）。重启后 Session Recovery 读取 docs/session/current.md 恢复上下文。|
-| SSH to GitHub port 22 times out, HTTPS works | WSL network: SSH (port 22) intermittently blocked or slow, HTTPS (port 443) reliable | Fall back to HTTPS: `git remote set-url origin https://github.com/<user>/<repo>.git`; push via HTTPS; switch back to SSH when network recovers. This is a WSL quirk, not a credential issue. |
+| Kimi provider 401 even with valid key | Wrong provider (e.g. `kimi` → `api.moonshot.ai`) or auth marked failed | Use `kimi-coding-cn` (China) with `KIMI_CN_API_KEY`; then `hermes auth reset kimi-coding-cn`. See `references/kimi-provider-config.md` |
+| Can't switch model to Kimi | Model name typo (e.g. `kimi-k2-code` doesn't exist) | API model is `kimi-k2.7-code`; query with `curl https://api.moonshot.cn/v1/models`. See `references/kimi-provider-config.md` |

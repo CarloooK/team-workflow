@@ -36,7 +36,8 @@ team-workflow/
 │   ├── git-credential-debug.md
 │   ├── discord-gateway-diagnosis.md
 │   ├── python-cli-tool-pattern.md
-│   └── project-status-audit.md
+│   ├── project-status-audit.md
+│   └── kimi-provider-config.md
 ├── setup.sh               ← One-command sync to local ~/.hermes/
 └── README.md
 ```
