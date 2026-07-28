@@ -79,3 +79,15 @@ hermes auth reset kimi-coding-cn          # 重置标记
 - 先确认 provider 是 `kimi-coding-cn`（不是 `kimi` 或 `kimi-coding`）
 - 再 `hermes auth reset kimi-coding-cn`
 - 用 `-v` 看实际请求的 base_url 和 provider
+
+### 5. 全局 `model.base_url` 会覆盖 provider 默认 URL
+
+如果之前用 DeepSeek 设置了 `model.base_url: https://api.deepseek.com/v1`，切到 Kimi 后这个全局配置依然生效，导致请求发到 DeepSeek 而不是 Moonshot。
+
+```bash
+# 检查
+hermes config get model.base_url
+
+# 清除
+hermes config unset model.base_url
+```
