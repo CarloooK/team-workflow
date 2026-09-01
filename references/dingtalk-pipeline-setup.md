@@ -100,11 +100,17 @@ grep -E "Connecting|✓|✗|Gateway running" ~/.hermes/profiles/<profile>/logs/g
 5. **config.yaml 保护**：profile 的 config.yaml 禁止直接 patch，用
    `hermes -p <profile> config set <key> <value>` 写入。
 6. **发布才生效**：钉钉机器人配置改动必须发布新版本，否则不生效。
+7. **gateway 进程树内不能 kill gateway**：CLI 会话若由 gateway 派生，kill/tmux kill-session 会被
+   安全拦截（SIGTERM 传播）。重启目标 bot 用 `tmux send-keys -t <session> C-c` 再重发启动命令；
+   Ctrl-C 可能连带退出外层 shell → 直接 `tmux kill-session` 后重建更干净（用 send-keys 也可以，
+   注意 C-c 只杀进程不杀 tmux 会话时才省事）。
+8. **Card edit failed: StreamingUpdateRequest**：Xiaoxin 日志常见 WARNING，钉钉卡片流式更新
+   失败（StreamingUpdateRequest NoneType），不影响消息收发，可忽略。
 
 ## 七、待办
 
 - [ ] Workbuddy-Bot：钉钉建应用 → profile → 同流程接入
-- [ ] Mela 的 SOUL.md 从克隆的 Xiaoxin 人设改为 DEV 角色
-- [ ] WSL 自启脚本加入 gateway 拉起（当前 gateway 不在 start-webui.sh）
+- [x] Mela 的 SOUL.md 从克隆的 Xiaoxin 人设改为 DEV 角色
+- [x] WSL 自启脚本加入 gateway 拉起（当前 gateway 不在 start-webui.sh）
 - [ ] 实测 bot 间 @ 是否生效（否则统一用唤醒词）
 - [ ] 团队协议 @语法 从 Discord 版切换为钉钉版
