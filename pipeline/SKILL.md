@@ -1,6 +1,6 @@
 ---
 name: hermes-multi-agent-pipeline
-description: "Full multi-agent software development pipeline with Hermes Discord bots. Architecture: 1 human (Carlo) + 4 bots (Xiaoxin/coordinator, XPS/systems-engineer, Mela/QA, CarloMac/implementer). Workflow: discuss → plan → human approval → execute → release. Communication via Discord channels, artifacts stored on GitHub."
+description: "Full multi-agent software development pipeline with Hermes bots. Architecture: 1 human (Carlo) + 4 bots (Xiaoxin/coordinator, XPS/systems-engineer, Mela/QA, CarloMac/implementer). Workflow: discuss → plan → human approval → execute → release. Communication via DingTalk (primary, since 2026-09-01; Discord kept but disabled). Artifacts stored on GitHub."
 version: 2.2.0
 author: Carlo
 ---
@@ -82,6 +82,41 @@ collaborating via Discord channels and GitHub repositories.
 ```
 
 > 🔍 = 执行 `code-review-graph` 命令。详见 `Full Cycle Walkthrough` 和 `references/crg-integration.md`。
+
+---
+
+## 钉钉管道（DingTalk Pipeline）— 2026-09-01 起生效
+
+> **背景**：Discord 国内直连不稳定（需代理），团队通信迁移到钉钉。
+> **状态**：Discord 配置**保留不删除、暂时禁用**（可回切）；钉钉为主管道。
+> **完整搭建手册**：`references/dingtalk-pipeline-setup.md`
+
+### 平台与角色
+| Bot | 钉钉应用 | Profile | 唤醒词 |
+|-----|---------|---------|--------|
+| Xiaoxin（协调/SE） | Xiaoxin-Bot | discord-xiaoxin | Xiaoxin / 小新 |
+| Mela（DEV） | Mela-Bot | mela | Mela / 梅拉 |
+| Workbuddy（QA） | （待建） | （待建） | — |
+
+### 群内协作机制（对应 Discord 的 ALLOW_BOTS=mentions）
+- 多 bot 共存同一钉钉群：群设置 → 群机器人 → 添加机器人（企业内部应用机器人）
+- 触发条件二选一：
+  1. **@提及** bot（isInAtList 检测）
+  2. **唤醒词**：消息含 bot 名（mention_patterns），无需 @ —— **bot 间传话的可靠兜底**
+- bot 间传话：`@Mela 请实现 ...` 或直接 `Mela 请实现 ...`
+
+### 管道差异速查
+| 项目 | Discord（禁用中） | 钉钉（现行） |
+|------|------------------|--------------|
+| 消息触发 | DISCORD_ALLOW_BOTS=mentions | require_mention: true + mention_patterns |
+| @语法 | `<@ID>` | @机器人名 或 唤醒词 |
+| 连接模式 | WebSocket（需代理） | Stream 长连接（国内直连，免公网回调） |
+| 限流 | — | 20 条/分钟/机器人，超限静默 10 分钟 |
+| 凭证 | DISCORD_BOT_TOKEN | DINGTALK_CLIENT_ID / DINGTALK_CLIENT_SECRET |
+
+### 讨论流程（不变）
+发言顺序、每 bot 2 轮、停止协议、沉默规则、审批关键词、plan/meeting 文档规范，
+与下方 Discord 版完全一致，仅 @ 语法按上表切换。
 
 ---
 

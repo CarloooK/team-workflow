@@ -2,6 +2,9 @@
 
 Bot team 的工作流定义仓库。所有机器（WSL, Dell PC, MacMini, 云服务器）从这里同步配置。
 
+> **通信管道（2026-09-01）**：主通道已切换为**钉钉**（多 bot 同群 + @提及/唤醒词触发）。
+> Discord 配置保留但暂时禁用，详见 [钉钉管道搭建手册](references/dingtalk-pipeline-setup.md)。
+
 ## 同步状态
 
 | 机器 | 角色 | 状态 |
